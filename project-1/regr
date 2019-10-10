@@ -1,0 +1,79 @@
+#!/bin/bash
+
+if [ "$#" -lt 1 ]; then
+	echo "Illegal number of parameters"
+	exit
+fi
+
+# loop arxeiwn
+for file in $*
+do
+
+# arxikopoihseis gia ka8e arxeio
+length=0
+sum_x=0
+sum_y=0
+sum_xy=0
+sum_x2=0
+err=0
+flag=1
+
+	for line in `cat ${file}` # kobei grammes
+	do
+
+		X[length]=$(cut -d':' -f1 <<<${line}) # kobei delimeters
+		Y[length]=$(cut -d':' -f2 <<<${line}) # kobei to ipoloipo
+		
+		# xreisimopoioume eksoteriko ergaleio gia pros8esh floats
+		# to bc htan peos, kakh akribeia fp
+		sum_x=$(awk "BEGIN {print ${sum_x} + ${X[length]}; exit}")
+		sum_y=$(awk "BEGIN {print ${sum_y} + ${Y[length]}; exit}")
+		sum_xy=$(awk "BEGIN {print ${sum_xy} + ${X[length]} * ${Y[length]}; exit}")
+		sum_x2=$(awk "BEGIN {print ${sum_x2} + ${X[length]} * ${X[length]}; exit}")
+
+		# elenxos gia sta8ero dianusma
+		if (( $(awk "BEGIN {print (${X[0]} != ${X[length]})}") ))
+		then
+			flag=0
+		fi
+
+		let "length = length + 1"	# ari8mos seirwn arxeiou
+
+	done
+
+	# an to dianusma einai sta8ero o paranomasths tou a 8a ginei mhden kai den mporei na ginei h diairesh
+	if [ ${flag} -ne 0 ]
+	then
+		echo "FILE: $file, Sta8ero dianusma x"
+		continue
+	fi
+
+	a_ari8mhths=$(awk "BEGIN {print ${length} * ${sum_xy} - ${sum_x} * ${sum_y}; exit}")
+	a_paranomasths=$(awk "BEGIN {print ${length} * ${sum_x2} - ${sum_x} * ${sum_x}; exit}")
+	a=$(awk "BEGIN {print ${a_ari8mhths} / ${a_paranomasths}; exit}")
+	b=$(awk "BEGIN {print (${sum_y} - ${a} * ${sum_x}) / ${length}; exit}")
+
+
+	for ((i=0; i < ${length}; i++))
+	do
+		err=$(awk "BEGIN {print ${err} + ((${Y[i]} - ${a} * ${X[i]} + ${b}) ^ 2); exit}")
+	done
+
+echo -n "FILE: $file, a=$q"
+# xreisimopoioume thn printf apo /usr/bin/printf giati h tou bash exei problhma me ta locale
+a=`C_ALL=C /usr/bin/printf "%0.2f" $a`
+# to awk kobei trailing zeroes kai ".," an den xreiazontai, to tr kobei ta \n tou print gia na exei to format ths ekfwnhshs
+echo $a | awk '{ if ($0 ~ /./){ sub("0*$","",$0); sub (",$","",$0); sub ("\\.$","",$0);} print}' | tr '\n' ' '
+
+echo -n "b="
+b=`C_ALL=C /usr/bin/printf "%0.2f" $b`
+echo $b | awk '{ if ($0 ~ /./){ sub("0*$","",$0); sub (",$","",$0); sub ("\\.$","",$0);} print}' | tr '\n' ' '
+
+echo -n "c=1 err="
+err=`C_ALL=C /usr/bin/printf "%0.2f" $err`
+echo $err | awk '{ if ($0 ~ /./){ sub("0*$","",$0); sub (",$","",$0); sub ("\\.$","",$0);} print}'
+
+done
+
+
+exit
