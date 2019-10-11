@@ -1,0 +1,106 @@
+#!/bin/bash
+
+if [ "$#" -ne 1 ]; then
+	echo "Illegal number of parameters"
+	exit
+fi
+
+
+
+# briskei ola ta monadika onomata kai ta bazei se array
+# read: -r = raw data, -d = delimeter, -a apo8ikeush se pinaka
+# grep: -o = krataei mono tis lekseis pou teriazoun, -E = gia na doulepsei me regular expresion
+# <<< giati h read gia na doulepsei me pipe 8elei while loop kai mplekei asxhma
+read -r -d "\0" -a array <<< $(grep -o -E '[a-zA-Z]+' "${1}" | sort | uniq)
+
+
+#ari8mos omadwn
+num_line=0
+
+# ipologismos ba8mologias kai goal
+for element in "${array[@]}"
+do
+
+	ba8moi[num_line]=0
+	goal_ebale[num_line]=0
+	goal_efage[num_line]=0
+
+	for line in `cat ${1}`
+	do
+
+		if [[ $line == *${element}* ]]; then
+
+			# apomonosh apotelesmatwn
+			score=$(cut -d ':' -f2 <<< ${line})
+			goal1=$(cut -d '-' -f1 <<< ${score})
+			goal2=$(cut -d '-' -f2 <<< ${score})
+
+			#an einai entos
+			if [[ $line == ${element}* ]]; then
+
+				let "goal_ebale[num_line]+=${goal1}"
+				let "goal_efage[num_line]+=${goal2}"
+
+				if [[ ${goal1} -gt ${goal2} ]];	then
+					let "ba8moi[num_line]+=3"
+				elif [[ ${goal1} -eq ${goal2} ]];	then
+					let "ba8moi[num_line]+=1"
+				fi
+
+			# ektos
+			else
+
+				let "goal_ebale[num_line]+=${goal2}"
+				let "goal_efage[num_line]+=${goal1}"
+
+				if [[ ${goal2} -gt ${goal1} ]];	then
+					let "ba8moi[num_line]+=3"
+				elif [[ ${goal2} -eq ${goal1} ]]; then
+					let "ba8moi[num_line]+=1"
+				fi
+			fi
+		fi
+	done
+
+	#echo "${element}: ${ba8moi[num_line]} : ${goal_ebale[num_line]}-${goal_efage[num_line]}"
+
+	let "num_line++"
+done
+  
+#	Bubble sort  
+for (( i = 0; i<${num_line}; i++ )) 
+do
+      
+    for (( j = i; j<${num_line}-i-1; j++ )) 
+    do
+    	# se periptwsh isoba8mias elenxei alfari8mitka ta onomata
+        if [[ ( ${ba8moi[j]} -gt ${ba8moi[$((j+1))]} ) || ( ( ${ba8moi[j]} -eq ${ba8moi[$((j+1))]} ) && ( ${array[j]} < ${array[$((j+1))]}) ) ]]; then
+            # swap 
+            temp=${ba8moi[$j]} 
+            ba8moi[$j]=${ba8moi[$((j+1))]}   
+            ba8moi[$((j+1))]=${temp} 
+
+            temp=${array[$j]} 
+            array[$j]=${array[$((j+1))]}   
+            array[$((j+1))]=${temp}
+
+            temp=${goal_ebale[$j]} 
+            goal_ebale[$j]=${goal_ebale[$((j+1))]}   
+            goal_ebale[$((j+1))]=${temp} 
+
+            temp=${goal_efage[$j]} 
+            goal_efage[$j]=${goal_efage[$((j+1))]}   
+            goal_efage[$((j+1))]=${temp} 
+        fi
+    done
+done
+
+
+for (( i = ${num_line}-1; i>= 0; i-- )) 
+do
+	printf "%d.	%-25s	%d	%2d-%d\n" $((${num_line}-i)) ${array[i]} ${ba8moi[i]} ${goal_ebale[i]} ${goal_efage[i]} | unexpand -a
+
+	#echo "${array[i]}: ${ba8moi[i]} : ${goal_ebale[i]}-${goal_efage[i]}"
+
+done
+
