@@ -44,6 +44,7 @@ flag=1
 	# an to dianusma einai sta8ero o paranomasths tou a 8a ginei mhden kai den mporei na ginei h diairesh
 	if [ ${flag} -ne 0 ]
 	then
+		# TO_DO: c=0 edw kai c=1 katw, ipologismos ipoloipwn
 		echo "FILE: $file, Sta8ero dianusma x"
 		continue
 	fi

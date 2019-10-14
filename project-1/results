@@ -5,22 +5,23 @@ if [ "$#" -ne 1 ]; then
 	exit
 fi
 
-
-
 # briskei ola ta monadika onomata kai ta bazei se array
 # read: -r = raw data, -d = delimeter, -a apo8ikeush se pinaka
 # grep: -o = krataei mono tis lekseis pou teriazoun, -E = gia na doulepsei me regular expresion
-# <<< giati h read gia na doulepsei me pipe 8elei while loop kai mplekei asxhma
-read -r -d "\0" -a array <<< $(grep -o -E '[a-zA-Z]+' "${1}" | sort | uniq)
-
+# <<< giati h read/readarray/mapfile gia na doulepsoun me pipe 8eloun while loop kai mplekoun asxhma
+# mapfile: -t = bgazei ta newline
+mapfile -t array <<< $(grep -o -E '[^0-9:]+' "${1}" | grep -o -E '[^-]+'  | sort | uniq)
 
 #ari8mos omadwn
 num_line=0
 
+# Internal Field Separator. Kanei ta newline to monadiko separator. Alliws to cat kobei kai sta space
+OLDIFS=$IFS
+IFS=$'\n'
+
 # ipologismos ba8mologias kai goal
 for element in "${array[@]}"
 do
-
 	ba8moi[num_line]=0
 	goal_ebale[num_line]=0
 	goal_efage[num_line]=0
@@ -29,7 +30,6 @@ do
 	do
 
 		if [[ $line == *${element}* ]]; then
-
 			# apomonosh apotelesmatwn
 			score=$(cut -d ':' -f2 <<< ${line})
 			goal1=$(cut -d '-' -f1 <<< ${score})
@@ -62,12 +62,13 @@ do
 		fi
 	done
 
-	#echo "${element}: ${ba8moi[num_line]} : ${goal_ebale[num_line]}-${goal_efage[num_line]}"
-
 	let "num_line++"
 done
+
+# reset se deufalt timh
+IFS=$OLDIFS
   
-#	Bubble sort  
+# Bubble sort  
 for (( i = 0; i<${num_line}; i++ )) 
 do
       
@@ -95,12 +96,12 @@ do
     done
 done
 
-
+# ektyposh apotelesmatwn
 for (( i = ${num_line}-1; i>= 0; i-- )) 
 do
-	printf "%d.	%-25s	%d	%2d-%d\n" $((${num_line}-i)) ${array[i]} ${ba8moi[i]} ${goal_ebale[i]} ${goal_efage[i]} | unexpand -a
 
-	#echo "${array[i]}: ${ba8moi[i]} : ${goal_ebale[i]}-${goal_efage[i]}"
+	echo "$((${num_line}-i)).	${array[i]}	${ba8moi[i]}	${goal_ebale[i]}-${goal_efage[i]}"	
 
+	#printf "%d.	%-25s	%s	%2d-%d\n" $((${num_line}-i)) ${array[i]} ${ba8moi[i]} ${goal_ebale[i]} ${goal_efage[i]} | unexpand -a
+	#printf "%d.\t%s\t%d\t%d-%d\n" $((${num_line}-i)) ${array[i]} ${ba8moi[i]} ${goal_ebale[i]} ${goal_efage[i]}
 done
-

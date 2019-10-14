@@ -1,6 +1,6 @@
-1.	Manchesterunited		9	10-2
-2.	Tottenham			5	 6-5
-3.	Chelsea				4	 6-6
-4.	Manchestercity			4	 6-5
-5.	Liverpool			2	 1-5
-6.	Arsenal				0	 5-11
+1.	Manchester united	9	10-2
+2.	Tottenham	5	6-5
+3.	Chelsea	4	6-6
+4.	Manchester city	4	6-5
+5.	Liverpool	2	1-5
+6.	Arsenal	0	5-11
