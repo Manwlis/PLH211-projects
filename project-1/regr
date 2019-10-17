@@ -9,23 +9,24 @@ fi
 for file in $*
 do
 
-# arxikopoihseis gia ka8e arxeio
-length=0
-sum_x=0
-sum_y=0
-sum_xy=0
-sum_x2=0
-err=0
-flag=1
+	# arxikopoihseis gia ka8e arxeio
+	length=0
+	sum_x=0
+	sum_y=0
+	sum_xy=0
+	sum_x2=0
+	err=0
+	flag=1
 
-	for line in `cat ${file}` # kobei grammes
+	# pairnei mia grammh ana epanalipsh
+	for line in `cat ${file}`
 	do
 
-		X[length]=$(cut -d':' -f1 <<<${line}) # kobei delimeters
-		Y[length]=$(cut -d':' -f2 <<<${line}) # kobei to ipoloipo
+		X[length]=$(cut -d':' -f1 <<<${line}) # pairnei prin to delimeter
+		Y[length]=$(cut -d':' -f2 <<<${line}) # pairnei to ipoloipo
 		
-		# xreisimopoioume eksoteriko ergaleio gia pros8esh floats
-		# to bc htan peos, kakh akribeia fp
+		# xrhsimopoioume ekswteriko ergaleio(awk) gia pros8esh floats
+		# to bc eixe kakh akribeia fp
 		sum_x=$(awk "BEGIN {print ${sum_x} + ${X[length]}; exit}")
 		sum_y=$(awk "BEGIN {print ${sum_y} + ${Y[length]}; exit}")
 		sum_xy=$(awk "BEGIN {print ${sum_xy} + ${X[length]} * ${Y[length]}; exit}")
@@ -38,41 +39,46 @@ flag=1
 		fi
 
 		let "length = length + 1"	# ari8mos seirwn arxeiou
-
 	done
 
-	# an to dianusma einai sta8ero o paranomasths tou a 8a ginei mhden kai den mporei na ginei h diairesh
+	# an to dianusma einai sta8ero o paranomasths tou a 8a ginei mhden kai den mporei na ginei h diairesh.
+	# xrhsimopoioume ton tupo ax = cy + b. Epeidh ola ta shmeia einai se ka8eth eu8eia c=0, err=0 kai b=X[0].
+	# to a leitourgei opws to c sthn synarthsh cy = ax + b
 	if [ ${flag} -ne 0 ]
 	then
-		# TO_DO: c=0 edw kai c=1 katw, ipologismos ipoloipwn
-		echo "FILE: $file, Sta8ero dianusma x"
-		continue
+		a=1
+		c=0
+		b=${X[0]}
+		err=0
+
+	# kanonikes periptwseis
+	else
+		a_ari8mhths=$(awk "BEGIN {print ${length} * ${sum_xy} - ${sum_x} * ${sum_y}; exit}")
+		a_paranomasths=$(awk "BEGIN {print ${length} * ${sum_x2} - ${sum_x} * ${sum_x}; exit}")
+		a=$(awk "BEGIN {print ${a_ari8mhths} / ${a_paranomasths}; exit}")
+		b=$(awk "BEGIN {print (${sum_y} - ${a} * ${sum_x}) / ${length}; exit}")
+		c=1
+
+		for ((i=0; i < ${length}; i++))
+		do
+			err=$(awk "BEGIN {print ${err} + ((${Y[i]} - (${a} * ${X[i]} + ${b})) ^ 2); exit}")
+		done
 	fi
 
-	a_ari8mhths=$(awk "BEGIN {print ${length} * ${sum_xy} - ${sum_x} * ${sum_y}; exit}")
-	a_paranomasths=$(awk "BEGIN {print ${length} * ${sum_x2} - ${sum_x} * ${sum_x}; exit}")
-	a=$(awk "BEGIN {print ${a_ari8mhths} / ${a_paranomasths}; exit}")
-	b=$(awk "BEGIN {print (${sum_y} - ${a} * ${sum_x}) / ${length}; exit}")
+	echo -n "FILE: $file, a="
+	# xrhsimopoioume thn printf gia thn stroggulopoihsh. 
+	# allazoume to locale gia na balei "." anti "," ean to LC tou leitourgikou einai sta ellhnika
+	a=`LC_ALL=C printf "%0.2f" $a`
+	# to awk kobei trailing zeroes kai "." an den xreiazontai, to tr kobei ta \n tou print gia na exei to format ths ekfwnhshs
+	echo $a | awk ' { sub("0+$",""); sub("\\.$",""); print} ' | tr '\n' ' '
 
+	echo -n "b="
+	b=`LC_ALL=C printf "%0.2f" $b`
+	echo $b | awk ' { sub("0+$",""); sub("\\.$",""); print} ' | tr '\n' ' '
 
-	for ((i=0; i < ${length}; i++))
-	do
-		err=$(awk "BEGIN {print ${err} + ((${Y[i]} - (${a} * ${X[i]} + ${b})) ^ 2); exit}")
-	done
-
-echo -n "FILE: $file, a=$q"
-# xreisimopoioume thn printf apo /usr/bin/printf giati h tou bash exei problhma me ta locale
-a=`LC_ALL=C printf "%0.2f" $a`
-# to awk kobei trailing zeroes kai ".," an den xreiazontai, to tr kobei ta \n tou print gia na exei to format ths ekfwnhshs
-echo $a | awk '{ if ($0 ~ /./){ sub("0*$","",$0); sub (",$","",$0);} print}' | tr '\n' ' '
-
-echo -n "b="
-b=`LC_ALL=C printf "%0.2f" $b`
-echo $b | awk '{ if ($0 ~ /./){ sub("0*$","",$0); sub (",$","",$0);} print}' | tr '\n' ' '
-
-echo -n "c=1 err="
-err=`LC_ALL=C printf "%0.2f" $err`
-echo $err | awk '{ if ($0 ~ /./){ sub("0*$","",$0); sub (",$","",$0);} print}'
+	echo -n "c=${c} err="
+	err=`LC_ALL=C printf "%0.2f" $err`
+	echo $err | awk ' { sub("0+$",""); sub("\\.$",""); print} '
 
 done
 

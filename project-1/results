@@ -8,9 +8,9 @@ fi
 # briskei ola ta monadika onomata kai ta bazei se array
 # read: -r = raw data, -d = delimeter, -a apo8ikeush se pinaka
 # grep: -o = krataei mono tis lekseis pou teriazoun, -E = gia na doulepsei me regular expresion
-# <<< giati h read/readarray/mapfile gia na doulepsoun me pipe 8eloun while loop kai mplekoun asxhma
+# <<< giati h read/readarray/mapfile gia na doulepsoun me pipe 8eloun while loop kai ginetai poluploko
 # mapfile: -t = bgazei ta newline
-mapfile -t array <<< $(grep -o -E '[^0-9:]+' "${1}" | grep -o -E '[^-]+'  | sort | uniq)
+mapfile -t array <<< $(cut -d ':' -f1 "${1}" | grep -o -E '[^-]+'  | sort | uniq)
 
 #ari8mos omadwn
 num_line=0
@@ -24,22 +24,22 @@ for element in "${array[@]}"
 do
 	ba8moi[num_line]=0
 	goal_ebale[num_line]=0
-	goal_efage[num_line]=0
+	goal_dexthke[num_line]=0
 
 	for line in `cat ${1}`
 	do
-
-		if [[ $line == *${element}* ]]; then
+		# an to ${element} einai uposunolo tou $line
+		if [[ ${line} == *${element}* ]]; then
 			# apomonosh apotelesmatwn
 			score=$(cut -d ':' -f2 <<< ${line})
 			goal1=$(cut -d '-' -f1 <<< ${score})
 			goal2=$(cut -d '-' -f2 <<< ${score})
 
-			#an einai entos
-			if [[ $line == ${element}* ]]; then
+			#an to ${element} einai h arxh tou ${line}
+			if [[ ${line} == ${element}* ]]; then
 
 				let "goal_ebale[num_line]+=${goal1}"
-				let "goal_efage[num_line]+=${goal2}"
+				let "goal_dexthke[num_line]+=${goal2}"
 
 				if [[ ${goal1} -gt ${goal2} ]];	then
 					let "ba8moi[num_line]+=3"
@@ -47,11 +47,10 @@ do
 					let "ba8moi[num_line]+=1"
 				fi
 
-			# ektos
 			else
 
 				let "goal_ebale[num_line]+=${goal2}"
-				let "goal_efage[num_line]+=${goal1}"
+				let "goal_dexthke[num_line]+=${goal1}"
 
 				if [[ ${goal2} -gt ${goal1} ]];	then
 					let "ba8moi[num_line]+=3"
@@ -67,41 +66,36 @@ done
 
 # reset se deufalt timh
 IFS=$OLDIFS
-  
-# Bubble sort  
+
+# Bubble sort
 for (( i = 0; i<${num_line}; i++ )) 
 do
-      
-    for (( j = i; j<${num_line}-i-1; j++ )) 
-    do
-    	# se periptwsh isoba8mias elenxei alfari8mitka ta onomata
-        if [[ ( ${ba8moi[j]} -gt ${ba8moi[$((j+1))]} ) || ( ( ${ba8moi[j]} -eq ${ba8moi[$((j+1))]} ) && ( ${array[j]} < ${array[$((j+1))]}) ) ]]; then
-            # swap 
-            temp=${ba8moi[$j]} 
-            ba8moi[$j]=${ba8moi[$((j+1))]}   
-            ba8moi[$((j+1))]=${temp} 
+	for (( j = i; j<${num_line}-i-1; j++ )) 
+	do
+		# se periptwsh isoba8mias elenxei alfari8mitka ta onomata
+		if [[ ( ${ba8moi[j]} -gt ${ba8moi[$((j+1))]} ) || ( ( ${ba8moi[j]} -eq ${ba8moi[$((j+1))]} ) && ( ${array[j]} < ${array[$((j+1))]}) ) ]]; then
+			# swap
+			temp=${ba8moi[$j]}
+			ba8moi[$j]=${ba8moi[$((j+1))]}
+			ba8moi[$((j+1))]=${temp}
 
-            temp=${array[$j]} 
-            array[$j]=${array[$((j+1))]}   
-            array[$((j+1))]=${temp}
+			temp=${array[$j]}
+			array[$j]=${array[$((j+1))]}
+			array[$((j+1))]=${temp}
 
-            temp=${goal_ebale[$j]} 
-            goal_ebale[$j]=${goal_ebale[$((j+1))]}   
-            goal_ebale[$((j+1))]=${temp} 
+			temp=${goal_ebale[$j]}
+			goal_ebale[$j]=${goal_ebale[$((j+1))]}
+			goal_ebale[$((j+1))]=${temp}
 
-            temp=${goal_efage[$j]} 
-            goal_efage[$j]=${goal_efage[$((j+1))]}   
-            goal_efage[$((j+1))]=${temp} 
-        fi
-    done
+			temp=${goal_dexthke[$j]}
+			goal_dexthke[$j]=${goal_dexthke[$((j+1))]}
+			goal_dexthke[$((j+1))]=${temp}
+		fi
+	done
 done
 
-# ektyposh apotelesmatwn
+# ektyposh apotelesmatwn. Ta ektupwnoume anapoda giati sortarontai apo to mikrotero sto megalitero
 for (( i = ${num_line}-1; i>= 0; i-- )) 
 do
-
-	echo "$((${num_line}-i)).	${array[i]}	${ba8moi[i]}	${goal_ebale[i]}-${goal_efage[i]}"	
-
-	#printf "%d.	%-25s	%s	%2d-%d\n" $((${num_line}-i)) ${array[i]} ${ba8moi[i]} ${goal_ebale[i]} ${goal_efage[i]} | unexpand -a
-	#printf "%d.\t%s\t%d\t%d-%d\n" $((${num_line}-i)) ${array[i]} ${ba8moi[i]} ${goal_ebale[i]} ${goal_efage[i]}
+	echo "$((${num_line}-i)).	${array[i]}	${ba8moi[i]}	${goal_ebale[i]}-${goal_dexthke[i]}"
 done
