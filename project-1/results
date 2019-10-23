@@ -28,35 +28,33 @@ do
 
 	for line in `cat ${1}`
 	do
-		# an to ${element} einai uposunolo tou $line
-		if [[ ${line} == *${element}* ]]; then
-			# apomonosh apotelesmatwn
-			score=$(cut -d ':' -f2 <<< ${line})
-			goal1=$(cut -d '-' -f1 <<< ${score})
-			goal2=$(cut -d '-' -f2 <<< ${score})
 
-			#an to ${element} einai h arxh tou ${line}
-			if [[ ${line} == ${element}* ]]; then
+		# apomonosh apotelesmatwn
+		score=$(cut -d ':' -f2 <<< ${line})
+		goal1=$(cut -d '-' -f1 <<< ${score})
+		goal2=$(cut -d '-' -f2 <<< ${score})
 
-				let "goal_ebale[num_line]+=${goal1}"
-				let "goal_dexthke[num_line]+=${goal2}"
+		#an to "${element}-" einai h arxh tou ${line} h omada epeze entos
+		if [[ ${line} == ${element}\-* ]]; then
 
-				if [[ ${goal1} -gt ${goal2} ]];	then
-					let "ba8moi[num_line]+=3"
-				elif [[ ${goal1} -eq ${goal2} ]];	then
-					let "ba8moi[num_line]+=1"
-				fi
+			let "goal_ebale[num_line]+=${goal1}"
+			let "goal_dexthke[num_line]+=${goal2}"
 
-			else
+			if [[ ${goal1} -gt ${goal2} ]];	then
+				let "ba8moi[num_line]+=3"
+			elif [[ ${goal1} -eq ${goal2} ]];	then
+				let "ba8moi[num_line]+=1"
+			fi
+		#an to "-${element}:" einai iposinolo ths grammhs epaize ektos 
+		elif [[ ${line} == *\-${element}\:* ]]; then
 
-				let "goal_ebale[num_line]+=${goal2}"
-				let "goal_dexthke[num_line]+=${goal1}"
+			let "goal_ebale[num_line]+=${goal2}"
+			let "goal_dexthke[num_line]+=${goal1}"
 
-				if [[ ${goal2} -gt ${goal1} ]];	then
-					let "ba8moi[num_line]+=3"
-				elif [[ ${goal2} -eq ${goal1} ]]; then
-					let "ba8moi[num_line]+=1"
-				fi
+			if [[ ${goal2} -gt ${goal1} ]];	then
+				let "ba8moi[num_line]+=3"
+			elif [[ ${goal2} -eq ${goal1} ]]; then
+				let "ba8moi[num_line]+=1"
 			fi
 		fi
 	done
