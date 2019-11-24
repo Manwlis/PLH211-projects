@@ -1,5 +1,8 @@
 import re
+import math
 
+
+# ta regex me paren8eseis isws 8eloun ?:
 
 proionta = {}
 afm = {}
@@ -8,7 +11,7 @@ afm = {}
 epilogh = ""
 while(epilogh != '4'):
     # epilogh xrhsth
-    epilogh = input("Give your preference: (1: read new input file, 2: print statistics for a specific product,3: print statistics for a specific AFM, 4: exit the program)\n")
+    epilogh = input("\nGive your preference: (1: read new input file, 2: print statistics for a specific product,3: print statistics for a specific AFM, 4: exit the program)\n")
 
     if (epilogh == '1'):
 
@@ -58,22 +61,24 @@ while(epilogh != '4'):
                 # prospelash proiontwn
                 while(1):
                     # format pou 8eloume: proion: posothta timh sunolo \n
-                    x = re.fullmatch(r"[α-ωΑ-Ωa-zA-Z0-9]+:[^\S\n]*[0-9]+[^\S\n]+[0-9]+(.[0-9]+)?[^\S\n]+[0-9]+(.[0-9]+)?[^\S\n]*\n" , line )
+                    x = re.fullmatch(r"[α-ωΑ-Ωa-zA-Z0-9]+:[^\S\n]*[0-9]+[^\S\n]+[0-9]+(\.[0-9]+)?[^\S\n]+[0-9]+(\.[0-9]+)?[^\S\n]*\n" , line )
 
                     calc_check = False
 
                     if x != None:
                         # apomonwsh ari8mwn
                         string_cut = line.split(":")
-                        numbers = re.findall(r"\d*\.\d+|\d+", string_cut[1])
+                        numbers = re.findall(r"\d+\.\d+|\d+", string_cut[1])
 
                         # posotita megalhterh tou mhden kai posotita*timh = sunolo
-                        calc_check = ( int(numbers[0]) > 0 ) and ( int(numbers[0]) * float(numbers[1]) == float(numbers[2]) )
-                        
+                        calc_check = ( int(numbers[0]) > 0 ) and math.isclose( int(numbers[0]) * float(numbers[1]) , float(numbers[2]) , abs_tol=0.001)
+
+                   
                     # apetuxan oi elenxoi h den einai to format twn proiontwn
                     if( calc_check == False):
                         # format sunolou
                         x = re.fullmatch( r"(συνολο|ΣΥΝΟΛΟ):[^\S\n]*[0-9]+(\.[0-9]+)?[^\S\n]*\n" , line )
+
                         if(x == None):
                             error_flag = 1
                         else:
@@ -84,34 +89,34 @@ while(epilogh != '4'):
                     # ta kratame mexri na kseroume oti olh h apodeiksh einai swsth
 
                     pinakas_prointwn.append([])
-                    pinakas_prointwn[ari8mos_prointwn].append(string_cut[0].capitalize())
-                    pinakas_prointwn[ari8mos_prointwn].append(numbers[0])
+                    pinakas_prointwn[ari8mos_prointwn].append( string_cut[0].capitalize() )
+                    pinakas_prointwn[ari8mos_prointwn].append( int(numbers[0]) )
                     # !!!!!!!! isws den xreiazetai na ta kratame ola opws thn timh
-                    pinakas_prointwn[ari8mos_prointwn].append(numbers[1])
-                    pinakas_prointwn[ari8mos_prointwn].append(numbers[2])
+                    pinakas_prointwn[ari8mos_prointwn].append( float(numbers[1]) )
+                    pinakas_prointwn[ari8mos_prointwn].append( float(numbers[2]) )
 
-                    # upologismos seinolikou kostous
-                    sunoliko_poso += float(numbers[2])
+                    # upologismos sunolikou kostous
+                    sunoliko_poso += pinakas_prointwn[ari8mos_prointwn][3]
                     ari8mos_prointwn += 1
 
                     #epwmenh grammh
                     line = file.readline()
                 # telos proiontwn
 
-
                 # den hr8e sunolo
                 if (error_flag):
                     continue
 
                 # extract sunolo apo string
-                teliko_sunolo = float(re.findall( r"[0-9]+(\.[0-9]+)?" , line )[0])
+                teliko_sunolo = float(re.findall( r"[0-9]+(?:\.[0-9]+)?" , line )[0])
 
                 line = file.readline()
                 # elenxos Σsunolwn = sunolo
-                if teliko_sunolo != sunoliko_poso:
+                if math.isclose( teliko_sunolo , sunoliko_poso , abs_tol=0.001 ) == False:
                     continue
 
-                if re.fullmatch( r"\-+\n" , line ) != None:
+
+                if re.fullmatch( r"\-+\n?" , line ) != None:
                     # h apodeiksh ekleise swsta
 
                     # apo8ikeush me th seira pou diavasthkan
@@ -125,14 +130,14 @@ while(epilogh != '4'):
 
                             if value != None:
                                 # uparxei afm
-                                proionta[ pinakas_prointwn[i][0] ].update( {afm_apodeikshs : pinakas_prointwn[i][2] + float(value) } )
+                                proionta[ pinakas_prointwn[i][0] ].update( {afm_apodeikshs : pinakas_prointwn[i][3] + float(value) } )
                             else:
                                 # den uparxei afm
-                                proionta[ pinakas_prointwn[i][0] ].update( {afm_apodeikshs : pinakas_prointwn[i][2]} )
+                                proionta[ pinakas_prointwn[i][0] ].update( {afm_apodeikshs : pinakas_prointwn[i][3]} )
 
                         else:
                             # den uparxei proion
-                            proionta[ pinakas_prointwn[i][0] ] = { afm_apodeikshs : pinakas_prointwn[i][2] }
+                            proionta[ pinakas_prointwn[i][0] ] = { afm_apodeikshs : pinakas_prointwn[i][3] }
 
                         # afms
                         if afm.get( afm_apodeikshs ) != None:
@@ -154,21 +159,37 @@ while(epilogh != '4'):
                     # h apodeiksh den ekleise swsta
                     line = file.readline()
                     continue
+
             # teleiwnei otan erxete grammh null
+            
         # kleisiomo arxeiou
         file.close()
 
+
     elif (epilogh == '2'):
-        print('2')
-    elif (epilogh == '3'):
-        print('3')
         
+        proion_to_print = input("Give product name\n").capitalize()
+
+        # pame sto eswteriko leksiko
+        x = proionta.get( proion_to_print )
+       
+        try:
+            for key in sorted(x.keys()):
+                print(key, x[key])
+
+        except AttributeError:
+            epilogh = 0
 
 
+    elif (epilogh == '3'):
+        
+        afm_to_print = input("Give AFM\n").capitalize()
+        
+        x = afm.get( afm_to_print )
 
-
-#diavasma arxeiwn
-#elenxos or8othtas
-#upologismos kai apo8ikeush statistkwn
-
-#ektupwsh statistikwn
+        try:
+            for key in sorted(x.keys()):
+                print(key, x[key])
+                
+        except AttributeError:
+            epilogh = 0

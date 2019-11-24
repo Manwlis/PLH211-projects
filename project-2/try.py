@@ -92,3 +92,6 @@ for i in range(4):
 print(proionta)
 
 print("\n", afms)
+
+
+print(sorted(proionta.get( "sccd" )))
