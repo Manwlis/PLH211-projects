@@ -130,7 +130,7 @@ while(epilogh != '4'):
 
                             if value != None:
                                 # uparxei afm
-                                proionta[ pinakas_prointwn[i][0] ].update( {afm_apodeikshs : pinakas_prointwn[i][3] + float(value) } )
+                                proionta[ pinakas_prointwn[i][0] ].update( {afm_apodeikshs : pinakas_prointwn[i][3] + float(value)} )
                             else:
                                 # den uparxei afm
                                 proionta[ pinakas_prointwn[i][0] ].update( {afm_apodeikshs : pinakas_prointwn[i][3]} )
@@ -144,17 +144,18 @@ while(epilogh != '4'):
                             # uparxei afm
 
                             value = afm[ afm_apodeikshs ].get( pinakas_prointwn[i][0] )
+                            print('\n',value, pinakas_prointwn[i][0])
 
                             if value != None:
                                 # uparxei proion
-                                afm[ afm_apodeikshs ].update( { pinakas_prointwn[i][0] : pinakas_prointwn[i][1] + int(value) } )
+                                afm[ afm_apodeikshs ].update( { pinakas_prointwn[i][0] : pinakas_prointwn[i][3] + float(value) } )
                             else:
                                 # den yparxei proion
-                                afm[ afm_apodeikshs ].update( { pinakas_prointwn[i][0] : pinakas_prointwn[i][1] } )
+                                afm[ afm_apodeikshs ].update( { pinakas_prointwn[i][0] : pinakas_prointwn[i][3] } )
                         
                         else:
                             # den yparxei afm
-                            afm[ afm_apodeikshs ] = { pinakas_prointwn[i][0] : pinakas_prointwn[i][1] }
+                            afm[ afm_apodeikshs ] = { pinakas_prointwn[i][0] : pinakas_prointwn[i][3] }
                 else:
                     # h apodeiksh den ekleise swsta
                     line = file.readline()
@@ -175,8 +176,8 @@ while(epilogh != '4'):
        
         try:
             for key in sorted(x.keys()):
-                print(key, x[key])
-
+                print(key, "%.2f" % (round(x[key] , 2)))
+               
         except AttributeError:
             epilogh = 0
 
@@ -189,7 +190,7 @@ while(epilogh != '4'):
 
         try:
             for key in sorted(x.keys()):
-                print(key, x[key])
+                print(key, "%.2f" % (round(x[key] , 2)))
                 
         except AttributeError:
             epilogh = 0
