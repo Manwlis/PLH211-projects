@@ -18,11 +18,9 @@ while(epilogh != '4'):
         #diavasma arxeiou
         file_name = input("Give file\n")
         try:
+            # anoigma arxeiou
             file = open(file_name, "r+", encoding='utf-8') #mono diavasma
-        except IOError:
-            epilogh = '0'  # h8ele kati to except
 
-        if (epilogh == '1'):
             line = file.readline()
             while line:
                 # an den einai olh h grammh apo "-" paei sthn epwmwnh / agnoei oles tis grammes mexri na brei paules 
@@ -61,7 +59,7 @@ while(epilogh != '4'):
                 # prospelash proiontwn
                 while(1):
                     # format pou 8eloume: proion: posothta timh sunolo \n
-                    x = re.fullmatch(r"[α-ωΑ-Ωa-zA-Z0-9]+:[^\S\n]*[0-9]+[^\S\n]+[0-9]+(\.[0-9]+)?[^\S\n]+[0-9]+(\.[0-9]+)?[^\S\n]*\n" , line )
+                    x = re.fullmatch(r"[^:\n]+:[^\S\n]*[0-9]+[^\S\n]+[0-9]+(\.[0-9]+)?[^\S\n]+[0-9]+(\.[0-9]+)?[^\S\n]*\n" , line )
 
                     calc_check = False
 
@@ -90,13 +88,10 @@ while(epilogh != '4'):
 
                     pinakas_prointwn.append([])
                     pinakas_prointwn[ari8mos_prointwn].append( string_cut[0].capitalize() )
-                    pinakas_prointwn[ari8mos_prointwn].append( int(numbers[0]) )
-                    # !!!!!!!! isws den xreiazetai na ta kratame ola opws thn timh
-                    pinakas_prointwn[ari8mos_prointwn].append( float(numbers[1]) )
                     pinakas_prointwn[ari8mos_prointwn].append( float(numbers[2]) )
 
                     # upologismos sunolikou kostous
-                    sunoliko_poso += pinakas_prointwn[ari8mos_prointwn][3]
+                    sunoliko_poso += pinakas_prointwn[ari8mos_prointwn][1]
                     ari8mos_prointwn += 1
 
                     #epwmenh grammh
@@ -130,32 +125,31 @@ while(epilogh != '4'):
 
                             if value != None:
                                 # uparxei afm
-                                proionta[ pinakas_prointwn[i][0] ].update( {afm_apodeikshs : pinakas_prointwn[i][3] + float(value)} )
+                                proionta[ pinakas_prointwn[i][0] ].update( {afm_apodeikshs : pinakas_prointwn[i][1] + float(value)} )
                             else:
                                 # den uparxei afm
-                                proionta[ pinakas_prointwn[i][0] ].update( {afm_apodeikshs : pinakas_prointwn[i][3]} )
+                                proionta[ pinakas_prointwn[i][0] ].update( {afm_apodeikshs : pinakas_prointwn[i][1]} )
 
                         else:
                             # den uparxei proion
-                            proionta[ pinakas_prointwn[i][0] ] = { afm_apodeikshs : pinakas_prointwn[i][3] }
+                            proionta[ pinakas_prointwn[i][0] ] = { afm_apodeikshs : pinakas_prointwn[i][1] }
 
                         # afms
                         if afm.get( afm_apodeikshs ) != None:
                             # uparxei afm
 
                             value = afm[ afm_apodeikshs ].get( pinakas_prointwn[i][0] )
-                            print('\n',value, pinakas_prointwn[i][0])
 
                             if value != None:
                                 # uparxei proion
-                                afm[ afm_apodeikshs ].update( { pinakas_prointwn[i][0] : pinakas_prointwn[i][3] + float(value) } )
+                                afm[ afm_apodeikshs ].update( { pinakas_prointwn[i][0] : pinakas_prointwn[i][1] + float(value) } )
                             else:
                                 # den yparxei proion
-                                afm[ afm_apodeikshs ].update( { pinakas_prointwn[i][0] : pinakas_prointwn[i][3] } )
+                                afm[ afm_apodeikshs ].update( { pinakas_prointwn[i][0] : pinakas_prointwn[i][1] } )
                         
                         else:
                             # den yparxei afm
-                            afm[ afm_apodeikshs ] = { pinakas_prointwn[i][0] : pinakas_prointwn[i][3] }
+                            afm[ afm_apodeikshs ] = { pinakas_prointwn[i][0] : pinakas_prointwn[i][1] }
                 else:
                     # h apodeiksh den ekleise swsta
                     line = file.readline()
@@ -163,8 +157,10 @@ while(epilogh != '4'):
 
             # teleiwnei otan erxete grammh null
             
-        # kleisiomo arxeiou
-        file.close()
+            # kleisiomo arxeiou
+            file.close()
+        except IOError:
+            epilogh = '0'  # h8ele kati to except
 
 
     elif (epilogh == '2'):
@@ -176,7 +172,7 @@ while(epilogh != '4'):
        
         try:
             for key in sorted(x.keys()):
-                print(key, "%.2f" % (round(x[key] , 2)))
+                print(key, "%.2f" % ( x[key] ))
                
         except AttributeError:
             epilogh = 0
@@ -190,7 +186,7 @@ while(epilogh != '4'):
 
         try:
             for key in sorted(x.keys()):
-                print(key, "%.2f" % (round(x[key] , 2)))
+                print(key, "%.2f" % ( x[key] ))
                 
         except AttributeError:
             epilogh = 0
