@@ -46,10 +46,6 @@ while(epilogh != '4'):
                 # expecting proion
                 line = file.readline()
 
-                # prepei na iparxei toulaxiston 1 proion prin to sunolo
-                if re.match("(συνολο|ΣΥΝΟΛΟ):", line) != None:
-                   line = file.readline()
-                   continue
 
                 # arxikopoihsh counter
                 ari8mos_prointwn = 0
@@ -77,7 +73,7 @@ while(epilogh != '4'):
                         # format sunolou
                         x = re.fullmatch( r"(συνολο|ΣΥΝΟΛΟ):[^\S\n]*[0-9]+(\.[0-9]+)?[^\S\n]*\n" , line )
 
-                        if(x == None):
+                        if( x == None or ari8mos_prointwn == 0 ):
                             error_flag = 1
                         else:
                             error_flag = 0
