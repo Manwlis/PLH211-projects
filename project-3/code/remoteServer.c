@@ -1,32 +1,7 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
-#include <errno.h> /* kapou sthn select xreiazetai */
-#include <sys/select.h> /* sockets */
-#include <sys/wait.h> /* sockets */
-#include <sys/types.h> /* sockets */
-#include <sys/socket.h> /* sockets */
-#include <netinet/in.h> /* internet sockets */
-#include <arpa/inet.h>
-#include <netdb.h> /* gethostbyaddr */
-#include <signal.h> /* signal */
-#include <unistd.h> /* fork */
+#include "remote.h"
 
-#define MAX_MSG 512
-
-#define TRUE 1
-#define FALSE 0
-
-void perror_exit ( char * message )
-{
-    perror ( message ) ;
-    exit ( EXIT_FAILURE ) ;
-}
-
-int read_from_client (int i)
-{
-    return i;
-}
+void read_from_client (int i);
+void sanitize ( char* line);
 
 int main( int argc , char ** argv )
 {
@@ -72,7 +47,7 @@ int main( int argc , char ** argv )
         perror("setsockopt(SO_REUSEADDR) failed");
 
     /* Bind socket to address */
-    if ( bind( socket_id , ( struct sockaddr *) & server , sizeof ( server )) < 0)
+    if ( bind( socket_id , (struct sockaddr *) & server , sizeof(server) ) < 0)
         perror_exit("bind");   
 
 
@@ -85,11 +60,16 @@ int main( int argc , char ** argv )
 
 
     /***** listen active file descriptors *****/
-
+    
     /* Init set of active sockets */
+    FD_ZERO(&active_fd_set);
+    FD_SET( socket_id , &active_fd_set );
+
+
     while ( TRUE )
     {
         /* Block until input arrive on an active socket */
+        read_fd_set = active_fd_set;
         if ( select( FD_SETSIZE , &read_fd_set , NULL , NULL , NULL ) < 0 )
             perror_exit("select");
 
@@ -117,13 +97,8 @@ int main( int argc , char ** argv )
                 else
                 {
                     /* sundedemeno socket exei kainourgia dedomena */
-                    int flag = read_from_client(i);
-                    // h read from client mas leei oti teleiwse h douleia tou
-                    if( flag <= 0)
-                    {
-                        close(i);
-                        FD_CLR ( i , &active_fd_set );
-                    }
+                    read_from_client(i);
+
                 }
                 
             }
@@ -132,3 +107,56 @@ int main( int argc , char ** argv )
 
 }
  
+
+// diavasma socket
+void read_from_client (int filedes)
+{
+    int ret;
+
+    char buf[50];
+    char word[500];  // ta noumera paizontai
+
+    int j = 0;
+    int i;
+
+    while ( ( ret = read( filedes, buf , sizeof(buf)-1 ) ) > 0 ) 
+    {
+        i = 0;
+        
+        while (i < ret) // gia olous tous xarakthres mesa ston buffer
+        {
+            while (  ( (char) buf[i] != '\n' ) && (i < ret) ) // mexri na brei \n h na teleiwsei o buffer
+                word[j++] = buf[i++];
+
+            if ( buf[i] == '\n' ) // an teleiwse epeidh brike \n, teleiwse h grammh, thn ektupwnei kai paei gia thn epomenh
+            {
+                word[j] = '\0';
+
+                int word_size = strlen(word);
+                if ( word_size > 0 && word_size <= 100 ) // elenxos mege8ous
+                    printf("<%s>\n", word ); // eisodos sthn domh ----------------- kai pws 8a blepei thn domh h sunarthsh
+
+                j = 0;
+            }
+            i++;
+        }
+    }
+}
+
+
+// clean string from comments
+void sanitize ( char* line)
+{
+    int i = 0;
+    int flag = 0;
+    int size = strlen( line );
+    while( i < size && flag == 0)
+    {
+        if (line[i] == ';')
+        {
+            line[i] = '\0';
+            flag = 1;
+        }
+        i++;
+    }
+}

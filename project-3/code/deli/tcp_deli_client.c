@@ -37,7 +37,7 @@ void main ( int argc , char * argv [])
     }
 
     port = atoi( argv [2]) ; /* Convert port number to integer */
-    server . sin_family = AF_INET ; /* Internet domain */
+    server.sin_family = AF_INET ; /* Internet domain */
 
     memcpy(&server.sin_addr , rem->h_addr , rem->h_length );
     server.sin_port = htons( port ); /* Server port */
