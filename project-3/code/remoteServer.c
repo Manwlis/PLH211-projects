@@ -1,36 +1,35 @@
 #include "remote.h"
 
-void read_from_client (int i);
+
+void read_from_socket (int i);
 void sanitize ( char* line);
+void child_work();
+
 
 int main( int argc , char ** argv )
 {
-
     /***** elenxos arguments *****/
+
     assert( argc == 3 );
 
     // den kseroume pws prei na einai kai ti elenxo mporei na xreiazetai
-    unsigned int port = (unsigned int)atoi(argv[1]);
+    int port = (unsigned int)atoi(argv[1]);
+    assert( port > 0 && port <= 65535 );
 
     int num_children = (int)atoi(argv[2]);
 	assert( num_children >= 1 );
 
-    /* Reap dead children a s y n c h r o n o u s l y */
-    //signal( SIGCHLD , sigchld_handler ); -----------------8a to doume otan pame sta proccess
 
-    fd_set active_fd_set, read_fd_set;
     int i;
-    //size_t size;
 
 
+    /***********************/
     /***** make socket *****/
+    /***********************/
+
     int socket_id;
     struct sockaddr_in server , client;
     socklen_t clientlen;
-
-    //struct sockaddr * server_ptr =( struct sockaddr *) & server ; ////unused  opou server_prt to dipla tou exoume balei
-    //struct sockaddr * client_ptr =( struct sockaddr *) & client ; ////unused
-    //struct hostent * rem ; ///////////////////////////////unused
 
     /* Create socket */
     if (( socket_id = socket( AF_INET , SOCK_STREAM , 0) ) < 0)
@@ -50,8 +49,6 @@ int main( int argc , char ** argv )
     if ( bind( socket_id , (struct sockaddr *) & server , sizeof(server) ) < 0)
         perror_exit("bind");   
 
-
-    /**** listen socket *****/
     /* Listen for connections */
     if ( listen( socket_id , 5) < 0) // to 5 deixnei posoi mporoun na perimnoun na sunde8oun. Isws 8elei allagh? 
         perror_exit("listen");
@@ -59,12 +56,75 @@ int main( int argc , char ** argv )
     printf( " Listening for connections to port %d\n" , port );
 
 
+    /******************************************************/
+    /**** create proccesses *******************************/
+    /**** make pipes for parent-child synchronization *****/
+    /******************************************************/
+    
+    /* Reap dead children asynchronously. */
+    //signal( SIGCHLD , sigchld_handler );  /////////////////////////////-----------------8a to doume otan pame sta proccess
+
+
+    // se auto to pipe deixnoun ta paidia oti einai dia8esima
+    int pipe_dia8esimwn[2];
+    if( pipe(pipe_dia8esimwn) == -1 ) 
+        perror_exit("pipe call");
+
+    // se auta ta pipe o goneas deinei sta paidia entoles gia ektelesh
+    int pipe_entolwn[num_children][2];
+
+
+    // make children
+    for ( i = 0 ; i < num_children ; i++ )
+    {
+        // dhmiourgia twn pipe pou stelnei o goneas entoles
+        if( pipe( pipe_entolwn[num_children] ) == -1 )
+            perror_exit("pipe call");
+            
+        // dhmiourgia paidiwn
+        switch ( fork() ) 
+        { 
+            case -1: /* Error */
+                perror_exit("fork"); 
+
+            case 0: /* Child process */
+                // den prepei na blepoun to socket
+                close( socket_id );
+
+                // ta paidia mono grafoun sto pipe dia8esimothtas
+                close(pipe_dia8esimwn[0]);
+
+                // ta paidia mono diavazoun apo to pipe entolwn tous
+                close( pipe_entolwn[i][1] );
+
+                // ta paidia den prepei na blepoun ta pipe twn allwn paidiwn
+                for ( int j = 0 ; j < i ; j++)
+                    close( pipe_entolwn[j][1] );
+
+                // apostolh twn paidiwn sthn douleia tous. Prepei na kseroun pia einai h seira tous
+                child_work( i );
+
+            default: 
+                // o goneas mono diavazei sto pipe dia8esimothtas
+                close( pipe_dia8esimwn[1] );
+
+                // o goneas mono grafei sta pipe entolwn
+                close( pipe_entolwn[i][0] );
+        }
+    }
+
+
+
+
+    /******************************************/
     /***** listen active file descriptors *****/
+    /******************************************/
     
     /* Init set of active sockets */
+    fd_set active_fd_set, read_fd_set;
+
     FD_ZERO(&active_fd_set);
     FD_SET( socket_id , &active_fd_set );
-
 
     while ( TRUE )
     {
@@ -89,7 +149,7 @@ int main( int argc , char ** argv )
                     if ( copied_socket_id < 0 )
                         perror_exit("accept");
                     
-                    printf ( " Server: connect from host %s, port %hd. \n" , inet_ntoa(client.sin_addr ) , ntohs( client.sin_port ));
+                    printf ( " Server: connect from host %s, port %d. \n" , inet_ntoa(client.sin_addr ) , (int) ntohs( client.sin_port ));
                     
                     // mpenei sto set me ta sockets pou koitaei to select
                     FD_SET ( copied_socket_id , &active_fd_set );
@@ -97,19 +157,18 @@ int main( int argc , char ** argv )
                 else
                 {
                     /* sundedemeno socket exei kainourgia dedomena */
-                    read_from_client(i);
+                    read_from_socket(i);
 
                 }
                 
             }
         }
     }
-
 }
  
 
 // diavasma socket
-void read_from_client (int filedes)
+void read_from_socket (int filedes)
 {
     int ret;
 
@@ -125,7 +184,7 @@ void read_from_client (int filedes)
         
         while (i < ret) // gia olous tous xarakthres mesa ston buffer
         {
-            while (  ( (char) buf[i] != '\n' ) && (i < ret) ) // mexri na brei \n h na teleiwsei o buffer
+            while (  ( (char) buf[i] != '\0' ) &&  ( (char) buf[i] != '\n' ) && (i < ret) ) // mexri na brei \n h na teleiwsei o buffer
                 word[j++] = buf[i++];
 
             if ( buf[i] == '\n' ) // an teleiwse epeidh brike \n, teleiwse h grammh, thn ektupwnei kai paei gia thn epomenh
@@ -159,4 +218,9 @@ void sanitize ( char* line)
         }
         i++;
     }
+}
+
+
+void child_work()
+{
 }

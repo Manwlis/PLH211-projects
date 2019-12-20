@@ -1,10 +1,13 @@
 #include "remote.h"
 
-void file_read( char * file_name );
+
+int empty_line( char * line );
+void create_message( FILE *stream , int socket_id);
+void send_message(char * message , int message_size , int socket_id );
+
 
 int main( int argc , char ** argv )
 {
-
     /***** elenxos arguments *****/
     assert( argc == 5 );
 
@@ -12,15 +15,20 @@ int main( int argc , char ** argv )
     machine_name = argv[1];
     
     int server_port = atoi(argv[2]);
-    int receive_port = atoi(argv[3]);
+    assert( server_port > 0 && server_port <= 65535 );
 
-    assert( server_port > 0 && receive_port > 0 );
+    int receive_port = atoi(argv[3]);
+    assert( receive_port > 0 && receive_port <= 65535 );
+
 
     char * file_name = (char * ) malloc( sizeof(argv[4]) );
     file_name = argv[4];
     
-    
+
+    /***********************/
     /***** make socket *****/
+    /***********************/
+
     int socket_id;
     struct sockaddr_in server , client;
     socklen_t clientlen;
@@ -47,29 +55,37 @@ int main( int argc , char ** argv )
         perror_exit(" connect ");
 
 
+    /*********************/
     /***** open file *****/
-    file_read( file_name );
+    /*********************/
+    
+    FILE *stream;
+
+    // try to open file
+    stream = fopen( file_name , "r" );
+    if (stream == NULL)
+        perror_exit("fopen");
+
+
+    /************************************/
+    /***** create and send messages *****/
+    /************************************/
+
+    create_message( stream , socket_id );
 
     
 }
 
 
 // anoigma kai diavasma arxeiwn
-void file_read( char * file_name )
+void create_message( FILE *stream , int socket_id )
 {
-    FILE *stream;
     char *line[10] = { NULL };
     size_t len[10] = {0};
     size_t message_size;
     ssize_t nread = 0;
     char * message = NULL;
     int i;
-    int k = 0;
-
-    // try to open file
-    stream = fopen( file_name , "r" );
-    if (stream == NULL)
-        perror_exit("fopen");
 
     while ( nread != -1 )
     {
@@ -78,9 +94,12 @@ void file_read( char * file_name )
         // diavasma deka grammwn kai enwsh tous se ena paketo
         for( i = 0 ; i < 10 ; i++ )
         {
-            // diavasma grammhs
-            nread = getline( &line[i] , &len[i] , stream );
-            
+            // diavasma grammhs. phdaei kenes grammes
+            do{
+                nread = getline( &line[i] , &len[i] , stream );
+            }
+            while ( empty_line( line[i] ) );                    //line[i][0] == '\n' || line[i][0] == '\0'
+
             //ipologismos mege8ous mhnumatos
             if ( nread != -1 )
                 message_size += (size_t) nread;
@@ -88,30 +107,47 @@ void file_read( char * file_name )
                 *line[i] = '\0'; // exei teleiwsei to arxeio
         }
 
-        if ( message_size == 0)
+        // den exei kati na steilei
+        if ( message_size == 0 )
             break;
 
-        message = realloc( message , message_size + 2);
+        // prepei na xei dei oles tis grammes pou einai na steilei gia na kserei poso xwro xreiazetai
+        message_size = message_size + 2;
+        message = realloc( message , message_size );
 
         message[0] = '\0';
         for( i = 0 ; i < 10 ; i++ )
-        {
-            // na mhn bazei kenes grammes ??????????????
             strcat( message, line[i] );
-        }
 
-        // fix string format
-        char s[2] = "\n\0";
-        strcat( message, s);
-
-        // send message
-        printf("\nmessage %d\n%ssize = %d\n\n" , k , message , (int) message_size);
-        fflush(stdout);
-        k++;
-
+        send_message( message , message_size , socket_id );
     }
 
     free(message);
     for( i = 0 ; i < 10 ; i++ )
         free( line[i] );
+}
+
+
+
+void send_message(char * message , int message_size , int socket_id )
+{
+        // fix message format
+        char s[2] = "\n\0";
+        strcat( message, s);
+
+        // send message
+        printf("\n%s\nsize = %d\n\n" ,  message , (int) message_size);
+        fflush(stdout);
+        write( socket_id , message , message_size );
+        sleep(5);
+}
+
+
+int empty_line( char * line )
+{
+    int line_size = strlen(line);
+    for( int i = 0 ; i < line_size ; i++ )
+        if ( line[i] != '\0' && line[i] != '\n' && line[i] != ' ' && line[i] != '\t' )
+            return 0;
+    return 1;
 }
