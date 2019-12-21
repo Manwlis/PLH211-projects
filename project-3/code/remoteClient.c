@@ -2,8 +2,8 @@
 
 
 int empty_line( char * line );
-void create_message( FILE *stream , int socket_id);
-void send_message(char * message , int message_size , int socket_id );
+void create_message( FILE *stream , int socket_id , int receive_port );
+void send_message(char * block_entolwn , int block_entolwn_size , int socket_id , int receive_port );
 
 
 int main( int argc , char ** argv )
@@ -20,7 +20,6 @@ int main( int argc , char ** argv )
     int receive_port = atoi(argv[3]);
     assert( receive_port > 0 && receive_port <= 65535 );
 
-
     char * file_name = (char * ) malloc( sizeof(argv[4]) );
     file_name = argv[4];
     
@@ -30,7 +29,7 @@ int main( int argc , char ** argv )
     /***********************/
 
     int socket_id;
-    struct sockaddr_in server , client;
+    struct sockaddr_in server;
     socklen_t clientlen;
     struct hostent * rem ;
 
@@ -71,25 +70,25 @@ int main( int argc , char ** argv )
     /***** create and send messages *****/
     /************************************/
 
-    create_message( stream , socket_id );
+    create_message( stream , socket_id , receive_port );
 
     
 }
 
 
 // anoigma kai diavasma arxeiwn
-void create_message( FILE *stream , int socket_id )
+void create_message( FILE *stream , int socket_id , int receive_port )
 {
     char *line[10] = { NULL };
     size_t len[10] = {0};
-    size_t message_size;
+    size_t block_entolwn_size;
     ssize_t nread = 0;
-    char * message = NULL;
+    char * block_entolwn = NULL;
     int i;
 
     while ( nread != -1 )
     {
-        message_size = 0;
+        block_entolwn_size = 0;
 
         // diavasma deka grammwn kai enwsh tous se ena paketo
         for( i = 0 ; i < 10 ; i++ )
@@ -98,48 +97,56 @@ void create_message( FILE *stream , int socket_id )
             do{
                 nread = getline( &line[i] , &len[i] , stream );
             }
-            while ( empty_line( line[i] ) );                    //line[i][0] == '\n' || line[i][0] == '\0'
+            while ( empty_line( line[i] ) );
 
             //ipologismos mege8ous mhnumatos
             if ( nread != -1 )
-                message_size += (size_t) nread;
+                block_entolwn_size += (size_t) nread;
             else
                 *line[i] = '\0'; // exei teleiwsei to arxeio
         }
 
         // den exei kati na steilei
-        if ( message_size == 0 )
+        if ( block_entolwn_size == 0 )
             break;
 
         // prepei na xei dei oles tis grammes pou einai na steilei gia na kserei poso xwro xreiazetai
-        message_size = message_size + 2;
-        message = realloc( message , message_size );
+        block_entolwn = realloc( block_entolwn , block_entolwn_size );
 
-        message[0] = '\0';
+        block_entolwn[0] = '\0';
         for( i = 0 ; i < 10 ; i++ )
-            strcat( message, line[i] );
+            strcat( block_entolwn, line[i] );
 
-        send_message( message , message_size , socket_id );
+        send_message( block_entolwn , block_entolwn_size , socket_id , receive_port );
     }
 
-    free(message);
+    free(block_entolwn);
     for( i = 0 ; i < 10 ; i++ )
         free( line[i] );
 }
 
 
 
-void send_message(char * message , int message_size , int socket_id )
+void send_message(char * block_entolwn , int block_entolwn_size , int socket_id , int receive_port )
 {
-        // fix message format
-        char s[2] = "\n\0";
-        strcat( message, s);
+    // 5 8eseis gia to port kai 3 gia to format
+    int message_size = block_entolwn_size + 8;
+    // add receive port to final message
+    char message[message_size];
+    sprintf( message , "%d\n", receive_port );
 
-        // send message
-        printf("\n%s\nsize = %d\n\n" ,  message , (int) message_size);
-        fflush(stdout);
-        write( socket_id , message , message_size );
-        sleep(5);
+    // bazoume tis entoles sto teliko munhma
+    strcat( message , block_entolwn );
+
+    // fix message format
+    char s[2] = "\n\0";
+    strcat( message, s);
+
+    // send message
+    printf("\n%s\nsize = %d\n\n" ,  message , message_size );
+    fflush(stdout);
+    write( socket_id , message , message_size );
+    sleep(5);
 }
 
 

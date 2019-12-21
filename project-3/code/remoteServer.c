@@ -1,9 +1,10 @@
 #include "remote.h"
 
 
-void read_from_socket (int i);
-void sanitize ( char* line);
-void child_work();
+void read_from_socket( int filedes , struct node * lista_entolwn );
+void sceduler( int pipe_dia8esimwn , int pipe_entolwn[][2] , struct node * lista_entolwn );
+void sanitize ( char * line);
+void child_work( int child_id , int pipe_dia8esimothtas );
 
 
 int main( int argc , char ** argv )
@@ -102,7 +103,7 @@ int main( int argc , char ** argv )
                     close( pipe_entolwn[j][1] );
 
                 // apostolh twn paidiwn sthn douleia tous. Prepei na kseroun pia einai h seira tous
-                child_work( i );
+                child_work( i , pipe_dia8esimwn[1] );
 
             default: 
                 // o goneas mono diavazei sto pipe dia8esimothtas
@@ -114,17 +115,22 @@ int main( int argc , char ** argv )
     }
 
 
-
-
     /******************************************/
     /***** listen active file descriptors *****/
     /******************************************/
-    
+
     /* Init set of active sockets */
     fd_set active_fd_set, read_fd_set;
 
     FD_ZERO(&active_fd_set);
+
+    // bazoume sto set to socket pou kanei sundeseis
     FD_SET( socket_id , &active_fd_set );
+
+    // bazoume sto set to pipe pou deixnei dia8esimothta
+    FD_SET( pipe_dia8esimwn[0] , &active_fd_set );
+    /* Init empty list gia entoles */
+    struct node * lista_entolwn = NULL;
 
     while ( TRUE )
     {
@@ -141,26 +147,40 @@ int main( int argc , char ** argv )
                 // original socket - kainourgia sundesh
                 if ( i == socket_id )
                 {
-                    int copied_socket_id;  // to metefera apo panw gia na einai san ton kwdika tou select
-                    //size = sizeof(client);
+                    int copied_socket_id;
+                    
                     // dhmiourgia clonou
                     copied_socket_id = accept( socket_id , (struct sockaddr * ) &client , &clientlen ); // gia to size den eimaste sigouroi
-
                     if ( copied_socket_id < 0 )
                         perror_exit("accept");
                     
-                    printf ( " Server: connect from host %s, port %d. \n" , inet_ntoa(client.sin_addr ) , (int) ntohs( client.sin_port ));
+                    printf( " Server: connect from host %s, port %d. \n" , inet_ntoa(client.sin_addr ) , (int) ntohs( client.sin_port ));
                     
+                    // kanoume to socket non-blocking
+                    int flags = fcntl( copied_socket_id , F_GETFL , 0 );
+                    if (flags == -1)
+                        perror_exit("fcntl");
+
+                    flags = flags | O_NONBLOCK;
+
+                    if ( fcntl( copied_socket_id , F_SETFL , flags ) == -1 )
+                        perror_exit("fcntl");
+
                     // mpenei sto set me ta sockets pou koitaei to select
                     FD_SET ( copied_socket_id , &active_fd_set );
                 }
+                // yparxei kapio paidi dia8esimo na kanei douleia
+                else if ( i == pipe_dia8esimwn[0] )
+                {
+                    sceduler( pipe_dia8esimwn[0] , pipe_entolwn , lista_entolwn ); 
+                }
+                
+                // antigrafa socket. Pelaths exei steilei paketo
                 else
                 {
                     /* sundedemeno socket exei kainourgia dedomena */
-                    read_from_socket(i);
-
+                    read_from_socket( i , lista_entolwn );
                 }
-                
             }
         }
     }
@@ -168,32 +188,69 @@ int main( int argc , char ** argv )
  
 
 // diavasma socket
-void read_from_socket (int filedes)
+void read_from_socket( int filedes , struct node * lista_entolwn )
 {
+    /*
+// gia na brw thn ip tou pelath
+    struct sockaddr_in addr;
+    socklen_t addr_size = sizeof(struct sockaddr_in);
+    int res = getpeername(filedes, (struct sockaddr *)&addr, &addr_size);
+                        
+    printf( " Server: connect from host %s, port %d. \n" , inet_ntoa( addr.sin_addr ) , (int) ntohs( addr.sin_port ));
+    */
+
+
+
+
+
     int ret;
 
     char buf[50];
-    char word[500];  // ta noumera paizontai
+    char entolh[500];  // ta noumera paizontai
 
     int j = 0;
     int i;
 
+    int prwto_read_flag = TRUE;
+    int p = 0;
+
     while ( ( ret = read( filedes, buf , sizeof(buf)-1 ) ) > 0 ) 
     {
         i = 0;
-        
-        while (i < ret) // gia olous tous xarakthres mesa ston buffer
+        char port_string[5];
+
+        //pare prwth grammh mhnumatos giati periexei to port gia apanthsh
+        if ( prwto_read_flag )
         {
-            while (  ( (char) buf[i] != '\0' ) &&  ( (char) buf[i] != '\n' ) && (i < ret) ) // mexri na brei \n h na teleiwsei o buffer
-                word[j++] = buf[i++];
+            // mexri na brei \n
+            while ( (char) buf[i] != '\n' )
+                port_string[p++] = buf[i++];
+
+            //printf(" %s\n", port_string);
+            prwto_read_flag = FALSE;
+        }
+        // gia olous tous xarakthres mesa ston buffer
+        while (i < ret)
+        {
+            while ( ( (char) buf[i] != '\0' ) &&  ( (char) buf[i] != '\n' ) && (i < ret) ) // mexri na brei \n h na teleiwsei o buffer
+            {
+                /* an exei perasei auto to mege8os sigoura 8a aporif8ei kai gia na  *
+                 * apofigoume buffer overflow den kratame tous epomenous xarakthres */
+                if( i > 120 )
+                    entolh[j++] = buf[i++];
+                else
+                    i++;
+            }
 
             if ( buf[i] == '\n' ) // an teleiwse epeidh brike \n, teleiwse h grammh, thn ektupwnei kai paei gia thn epomenh
             {
-                word[j] = '\0';
+                entolh[j] = '\0';
 
-                int word_size = strlen(word);
-                if ( word_size > 0 && word_size <= 100 ) // elenxos mege8ous
-                    printf("<%s>\n", word ); // eisodos sthn domh ----------------- kai pws 8a blepei thn domh h sunarthsh
+                int entolh_size = strlen(entolh);
+                if ( entolh_size > 0 && entolh_size <= 100 ) // elenxos mege8ous
+                {
+                    append( &lista_entolwn , port_string , entolh );
+                }
 
                 j = 0;
             }
@@ -203,7 +260,39 @@ void read_from_socket (int filedes)
 }
 
 
-// clean string from comments
+/* Blepei an iparxei dia8esimh douleia kai paidi gia na thn kanei. Elenxei poios ektelei ti. */
+void sceduler( int pipe_dia8esimwn , int pipe_entolwn[][2] , struct node * lista_entolwn )
+{
+    //printf("%s<%s>\n", port , entolh ); // eisodos sthn domh -----------------
+    // des poios einai o prwtos dia8esimos appo pipe dia8esimothtas
+    int * dia8esimos = NULL;
+
+    // koitame oti iparxei dia8esimh douleia
+    if ( lista_entolwn == NULL )
+        return;
+
+    int nread = read( pipe_dia8esimwn , dia8esimos , sizeof(int) );
+    if ( nread == -1 ) // la8os
+        perror_exit("read se pipe dia8esimwn");
+    else if (nread == 0 ) // den uparxei dia8esimos
+        return;
+
+    // pernei douleia apo thn lista
+    char * port = NULL;
+    char * entolh = NULL;
+    pop( &lista_entolwn , port , entolh );
+
+    // format gia to pipe
+    char * x =  (char * ) malloc( sizeof(port) + 1 + sizeof(entolh) );
+    sprintf( x , "%s@%s" , port , entolh);
+
+    // bale entolh sto antoistixo pipe
+    if ( ( write( pipe_entolwn[*dia8esimos][1] , x , (sizeof(entolh) + sizeof(port) + 1) ) ) == -1 )
+        perror_exit("write se pipe entolwn");
+}
+
+
+/* Clean string from comments. */
 void sanitize ( char* line)
 {
     int i = 0;
@@ -221,6 +310,25 @@ void sanitize ( char* line)
 }
 
 
-void child_work()
+void child_work( int child_id , int pipe_dia8esimothtas )
 {
+    // pes sto mpampa eisai dia8esimos
+    if ( write( pipe_dia8esimothtas , &child_id , sizeof(int) ) == -1 ) 
+        perror_exit("write sto pipe dia8esimothtas");
+
+    // perimene na sou steilei doulia
+
+    // pare douleia
+
+
+    // kane douleia
+
+    // steile apanthsh ston pelath
+
+    //ksanagine dia8esimos
+
+
+
+
+    exit(0);
 }
