@@ -27,35 +27,46 @@
 
 struct node
 {
+    char peer_addr[INET_ADDRSTRLEN];
     char * port;
     char * entolh;
     struct node * next;
 };
 
 
-void append(struct node ** list, char * port , char * entolh) 
+void append( struct node ** list, char * address , char * port , char * entolh ) 
 { 
     /* 1. allocate node */
     struct node * new_node = (struct node*) malloc(sizeof(struct node));
 
-    size_t port_size = sizeof(port);
-    size_t entolh_size = sizeof(entolh);
-
+    int port_size = strlen( port );
+    int entolh_size = strlen( entolh );
+ 
     new_node->port = (char * ) malloc( port_size );
     new_node->entolh = (char * ) malloc( entolh_size );
 
     struct node * last = *list;  /* used in step 5*/
-  
-    /* 2. put in the data  */
-    for( int i = 0 ; i < (int) port_size ; i++ )
-        new_node->port[i] = port[i];
 
-    for( int i = 0 ; i < (int) entolh_size ; i++ )
-        new_node->entolh[i] = entolh[i];    
-  
+    /* 2. put in the data  */
+    int i;
+
+    for( i = 0 ; i < INET_ADDRSTRLEN ; i++ )
+        new_node->peer_addr[i] = address[i];
+
+    for( i = 0 ; i < port_size ; i++ )
+        new_node->port[i] = port[i];
+    new_node->port[i] = '\0';
+
+    for( i = 0 ; i < entolh_size ; i++ )
+        new_node->entolh[i] = entolh[i];
+
+
+    //printf ( "%s   %s   %s\n" , new_node->peer_addr , new_node->port , new_node->entolh ); gia na blepoume ti mpainei sthn lista 
+
+
     /* 3. This new node is going to be the last node, so make next of it as NULL*/
-    new_node->next = NULL; 
-  
+    new_node->next = NULL;
+    
     /* 4. If the Linked List is empty, then make the new node as head */
     if (*list == NULL) 
     { 
@@ -75,7 +86,7 @@ void append(struct node ** list, char * port , char * entolh)
 
 
 /* returns 0 on empty list, else 1 */
-int pop(struct node **list , char * port , char * entolh ) 
+int pop( struct node **list , char * address , char * port , char * entolh ) 
 { 
     // If linked list is empty 
     if (*list == NULL) 
@@ -85,24 +96,23 @@ int pop(struct node **list , char * port , char * entolh )
     struct node* head = *list; 
 
     /* 1. allocate space */
-    size_t port_size = sizeof(head->port);
-    size_t entolh_size = sizeof(head->entolh);
+    int port_size = strlen( head->port );
+    int entolh_size = strlen( head->entolh );
 
-    port = (char * ) malloc( port_size );
-    entolh = (char * ) malloc( entolh_size );   
    
     /* 2. put out the data  */
-    for( int i = 0 ; i < (int) port_size ; i++ )
-        port[i] = head->port[i];
+    for( int i = 0 ; i < INET_ADDRSTRLEN ; i++ )
+       address[i] = head->peer_addr[i];
 
-    for( int i = 0 ; i < (int) entolh_size ; i++ )
-        entolh[i] = head->entolh[i];  
+    for( int i = 0 ; i < port_size ; i++ )
+       port[i] = head->port[i];
+
+    for( int i = 0 ; i < entolh_size + 1 ; i++ )
+       entolh[i] = head->entolh[i];
 
     /* 3. delete head  */
     *list = head->next; // Change head
 
-    free(head->port);
-    free(head->entolh);
     free(head);
 
     return 1;

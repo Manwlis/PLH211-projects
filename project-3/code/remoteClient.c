@@ -85,6 +85,7 @@ void create_message( FILE *stream , int socket_id , int receive_port )
     ssize_t nread = 0;
     char * block_entolwn = NULL;
     int i;
+    int ari8mos_entolwn = 0;
 
     while ( nread != -1 )
     {
@@ -98,10 +99,12 @@ void create_message( FILE *stream , int socket_id , int receive_port )
                 nread = getline( &line[i] , &len[i] , stream );
             }
             while ( empty_line( line[i] ) );
-
             //ipologismos mege8ous mhnumatos
             if ( nread != -1 )
+            {
                 block_entolwn_size += (size_t) nread;
+                ari8mos_entolwn++;
+            }
             else
                 *line[i] = '\0'; // exei teleiwsei to arxeio
         }
@@ -123,6 +126,9 @@ void create_message( FILE *stream , int socket_id , int receive_port )
     free(block_entolwn);
     for( i = 0 ; i < 10 ; i++ )
         free( line[i] );
+
+
+    printf("%d\n", ari8mos_entolwn); // prepei na stelnetai sto proccess pou pernei apanthseis
 }
 
 
