@@ -1,10 +1,9 @@
 #include "remote.h"
 
 
-int read_from_socket( int filedes , struct node * lista_entolwn );
-void sceduler( int pipe_dia8esimwn , int pipe_entolwn[] , struct node * lista_entolwn );
-void sanitize ( char * line);
-void child_work( int child_id , int pipe_dia8esimothtas , int pipe_entolwn );
+int read_from_socket( int filedes , struct node ** lista_entolwn );
+void sceduler( int pipe_dia8esimwn_read , int pipe_entolwn_write[] , struct node ** lista_entolwn );
+void child_work( int child_id , int pipe_dia8esimothtas_write , int pipe_entolwn_read );
 
 
 int main( int argc , char ** argv )
@@ -65,53 +64,56 @@ int main( int argc , char ** argv )
     /* Reap dead children asynchronously. */
     //signal( SIGCHLD , sigchld_handler );  /////////////////////////////-----------------8a to doume otan pame sta proccess
 
-
     // se auto to pipe deixnoun ta paidia oti einai dia8esima
     int pipe_dia8esimwn[2];
     if( pipe(pipe_dia8esimwn) == -1 ) 
         perror_exit("pipe call");
 
-    printf("%d   %d\n" , pipe_dia8esimwn[0] , pipe_dia8esimwn[1]);
-
     // se auta ta pipe o goneas deinei sta paidia entoles gia ektelesh
-    int pipe_entolwn[num_children];
+    int pipe_entolwn[num_children][2];
+    int pipe_entolwn_pateras[num_children];
 
-    int new_pipefd[2];
-    // make children
+    // kataskeuh pipes entolwn
     for ( i = 0 ; i < num_children ; i++ )
     {
-        // dhmiourgia twn pipe pou stelnei o goneas entoles
-        if( pipe( new_pipefd ) == -1 )
-            perror_exit("pipe call");
+        if( pipe( pipe_entolwn[i] ) == -1 )
+            perror_exit("creating pipe %d , i");
 
-        //printf("%d   %d\n" , new_pipefd[0] , new_pipefd[1]);
-        // dhmiourgia paidiwn
-        switch ( fork() ) 
-        { 
-            case -1: /* Error */
-                perror_exit("fork"); 
+        pipe_entolwn_pateras[i] = pipe_entolwn[i][1];
+    }
 
-            case 0: /* Child process */
-                // den prepei na blepoun to socket
-                close( socket_id );
+    int pid[num_children];
 
-                // ta paidia mono grafoun sto pipe dia8esimothtas
-                close(pipe_dia8esimwn[0]);
+    // dhmiourgia paidiwn, kleisimo twn pipes pou den xreiazontai kai apostolh gia douleia
+    for ( i = 0 ; i < num_children ; i++ )
+    {
+        if ((pid[i] = fork()) < 0)
+            perror_exit("creating children");
 
-                // ta paidia mono diavazoun apo to pipe entolwn tous
-                close( new_pipefd[1] );
+        if ( pid[i] == 0)
+        {
+            //kleise ta tou patera
+            close( pipe_dia8esimwn[0] );
 
-                // apostolh twn paidiwn sthn douleia tous. Prepei na kseroun pia einai h seira tous
-                child_work( i , pipe_dia8esimwn[1] , new_pipefd[0] );
+            for ( int k = 0 ; k < num_children ; k++ )
+            {
+                // kleise ola ta write
+                close ( pipe_entolwn[i][1] );
 
-            default:
-                // o goneas mono diavazei sto pipe dia8esimothtas
-                close( pipe_dia8esimwn[1] );
-
-                pipe_entolwn[i] = new_pipefd[1];
-                // o goneas mono grafei sta pipe entolwn
-                close( new_pipefd[0] );
+                //kleise twn allwn paidiwn ta read
+                if ( i != k )
+                    close( pipe_entolwn[k][0] );
+            }
+            // douleia
+            child_work( i , pipe_dia8esimwn[1] , pipe_entolwn[i][0] );
         }
+    }
+
+    // pateras kleinei oti den xreiazetai
+    for ( i = 0 ; i < num_children ; i++ )
+    {
+        close( pipe_entolwn[i][0] );
+        close( pipe_dia8esimwn[1] );
     }
 
 
@@ -129,6 +131,7 @@ int main( int argc , char ** argv )
 
     // bazoume sto set to pipe pou deixnei dia8esimothta
     FD_SET( pipe_dia8esimwn[0] , &active_fd_set );
+
     /* Init empty list gia entoles */
     struct node * lista_entolwn = NULL;
 
@@ -172,13 +175,13 @@ int main( int argc , char ** argv )
                 // yparxei kapio paidi dia8esimo na kanei douleia
                 else if ( i == pipe_dia8esimwn[0] )
                 {
-                    sceduler( pipe_dia8esimwn[0] , pipe_entolwn , lista_entolwn ); 
+                    sceduler( pipe_dia8esimwn[0] , pipe_entolwn_pateras , &lista_entolwn );
                 }
                 // antigrafa socket. Pelaths exei steilei paketo
                 else
                 {
                     /* sundedemeno socket exei kainourgia dedomena */
-                    int ret = read_from_socket( i , lista_entolwn );
+                    int ret = read_from_socket( i , &lista_entolwn );
 
                     // ekleise to socket apo ton client, to bgazoume apo to set kai to kleinoume kai apo edw
                     if ( ret == 0 )
@@ -194,7 +197,7 @@ int main( int argc , char ** argv )
  
 
 // diavasma socket
-int read_from_socket( int filedes , struct node * lista_entolwn )
+int read_from_socket( int filedes , struct node ** lista_entolwn )
 {
     int ret;
 
@@ -225,7 +228,7 @@ int read_from_socket( int filedes , struct node * lista_entolwn )
     while ( ( ret = read( filedes, buf , sizeof(buf)-1 ) ) > 0 ) 
     {
         i = 0;
-        char port_string[6];
+        char port_string[PORT_LEN];
 
         //pare prwth grammh mhnumatos giati periexei to port gia apanthsh
         if ( prwto_read_flag )
@@ -245,7 +248,7 @@ int read_from_socket( int filedes , struct node * lista_entolwn )
             {
                 /* an exei perasei auto to mege8os sigoura 8a aporif8ei kai gia na  *
                  * apofigoume buffer overflow den kratame tous epomenous xarakthres */
-                if( j < 105 )
+                if( j < ENTOLH_LEN )
                     entolh[j++] = buf[i++];
 
                 else
@@ -260,7 +263,7 @@ int read_from_socket( int filedes , struct node * lista_entolwn )
                 
                 if ( entolh_size > 0 ) // elenxos mege8ous
                 {
-                    append( &lista_entolwn , peer_addr , port_string , entolh );
+                    append( lista_entolwn , peer_addr , port_string , entolh );
                 }
 
                 j = 0;
@@ -273,79 +276,111 @@ int read_from_socket( int filedes , struct node * lista_entolwn )
 
 
 /* Blepei an iparxei dia8esimh douleia kai paidi gia na thn kanei. Elenxei poios ektelei ti. */
-void sceduler( int pipe_dia8esimwn , int * pipe_entolwn , struct node * lista_entolwn )
+void sceduler( int pipe_dia8esimwn_read , int * pipe_entolwn_write , struct node ** lista_entolwn )
 {
+    struct node * head = *lista_entolwn;
     // des poios einai o prwtos dia8esimos appo pipe dia8esimothtas
-    int * dia8esimos = NULL;
-
+    int dia8esimos;
     // koitame oti iparxei dia8esimh douleia
-    if ( lista_entolwn == NULL )
+    
+    if ( head == NULL ){
         return;
-
-    int nread = read( pipe_dia8esimwn , dia8esimos , sizeof(int) );
+    }
+    
+    // psaxnei dia8esimo
+    int nread = read( pipe_dia8esimwn_read , &dia8esimos , sizeof(int) );
     if ( nread == -1 ) // la8os
         perror_exit("read se pipe dia8esimwn");
     else if (nread == 0 ) // den uparxei dia8esimos
         return;
 
     // pernei douleia apo thn lista
-    char * port = NULL;
-    char * entolh = NULL;
+    char port[PORT_LEN];
+    char entolh[ENTOLH_LEN];
     char peer_addr[INET_ADDRSTRLEN];
-    pop( &lista_entolwn , peer_addr , port , entolh );
+
+    pop( lista_entolwn , peer_addr , port , entolh );
 
     // format gia to pipe
-    char * x =  (char * ) malloc( sizeof(port) + 1 + sizeof(entolh) );
-    sprintf( x , "%s@%s@%s" , peer_addr , port , entolh);
+    char pipe_message[PIPE_MESSAGE_LEN];
 
-printf("%s", x);
+    sprintf( pipe_message , "%s@%s@%s" , peer_addr , port , entolh);
 
     // bale entolh sto antoistixo pipe
-    if ( ( write( pipe_entolwn[ *dia8esimos ] , x , (sizeof(entolh) + sizeof(port) + 1) ) ) == -1 )
+    if ( ( write( pipe_entolwn_write[ dia8esimos ] , pipe_message , (sizeof(entolh) + sizeof(port) + 1) ) ) == -1 )
         perror_exit("write se pipe entolwn");
+
+    return;
 }
 
 
-/* Clean string from comments. */
-void sanitize ( char* line)
+void child_work( int child_id , int pipe_dia8esimothtas_write , int pipe_entolwn_read )
 {
-    int i = 0;
-    int flag = 0;
-    int size = strlen( line );
-    while( i < size && flag == 0)
-    {
-        if (line[i] == ';')
-        {
-            line[i] = '\0';
-            flag = 1;
-        }
-        i++;
-    }
-}
-
-
-void child_work( int child_id , int pipe_dia8esimothtas , int pipe_entolwn )
-{
-
-printf( "%d   %d   %d\n", child_id , pipe_dia8esimothtas , pipe_entolwn );
-fflush(stdout);
-
     // pes sto mpampa eisai dia8esimos
-    //if ( write( pipe_dia8esimothtas , &child_id , sizeof(int) ) == -1 ) 
-        //perror_exit("write sto pipe dia8esimothtas");
+    if ( write( pipe_dia8esimothtas_write , &child_id , sizeof(child_id) ) == -1 ) 
+        perror_exit("write sto pipe dia8esimothtas");
+
 
     // perimene na sou steilei doulia
+    char pipe_message[PIPE_MESSAGE_LEN];
+    int nread = read( pipe_entolwn_read , pipe_message , PIPE_MESSAGE_LEN );
+    if ( nread == -1 ) // la8os
+        perror_exit("read se pipe entolwn");
 
-    // pare douleia
+    //spaei to mhnuma se peer_addr port kai entolh
+    char peer_addr[INET_ADDRSTRLEN];
+    char port[PORT_LEN];
+    char entolh[ENTOLH_LEN];
 
+    char * delim = "@";
+    char * token;
+    token = strtok(pipe_message, delim);
 
-    // kane douleia
+    strcpy(peer_addr , token);
+    token = strtok(NULL, delim);
+
+    strcpy(port , token);
+    token = strtok(NULL, delim);
+
+    strcpy(entolh , token);
+    token = strtok(NULL, delim);
+
+    printf( "paidi %d:   %s    %s   %s\n" , child_id , peer_addr , port , entolh );
+    // entolh panw apo 100 la8os
+    int len = strlen(entolh);
+    if( len > 101 )
+        printf( " megalh entolh \n");
+
+    // sanitize
+    char * ptr;
+
+    ptr = strchr( entolh , ';' );
+    if (ptr != NULL) {
+        *ptr = '\0';
+    }
+    printf( "%s\n" , entolh );
+    char * sanitized_entolh = entolh;
+
+    // execute
+    token = strtok (sanitized_entolh, "|");
+    char upoentolh[ENTOLH_LEN];
+
+    while ( token != NULL )
+    {
+        strcpy( upoentolh , token );
+        token = strtok (NULL, "|");
+
+        "ls" "-args" "isodo"
+        exec( , , )
+    }
 
     // steile apanthsh ston pelath
 
     //ksanagine dia8esimos
+while(1){
 
+}
 
-
+printf("child %d dead\n" , child_id);
     exit(0);
 }

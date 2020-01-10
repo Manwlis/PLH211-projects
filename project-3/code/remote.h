@@ -20,6 +20,9 @@
 
 
 #define MAX_MSG 512
+#define PORT_LEN 6
+#define ENTOLH_LEN 105
+#define PIPE_MESSAGE_LEN (INET_ADDRSTRLEN + 1 + PORT_LEN + 1 + ENTOLH_LEN + 1)
 
 #define TRUE 1
 #define FALSE 0
@@ -28,8 +31,8 @@
 struct node
 {
     char peer_addr[INET_ADDRSTRLEN];
-    char * port;
-    char * entolh;
+    char port[6];
+    char entolh[105];
     struct node * next;
 };
 
@@ -39,12 +42,6 @@ void append( struct node ** list, char * address , char * port , char * entolh )
     /* 1. allocate node */
     struct node * new_node = (struct node*) malloc(sizeof(struct node));
 
-    int port_size = strlen( port );
-    int entolh_size = strlen( entolh );
- 
-    new_node->port = (char * ) malloc( port_size );
-    new_node->entolh = (char * ) malloc( entolh_size );
-
     struct node * last = *list;  /* used in step 5*/
 
     /* 2. put in the data  */
@@ -53,16 +50,12 @@ void append( struct node ** list, char * address , char * port , char * entolh )
     for( i = 0 ; i < INET_ADDRSTRLEN ; i++ )
         new_node->peer_addr[i] = address[i];
 
-    for( i = 0 ; i < port_size ; i++ )
+    for( i = 0 ; i < PORT_LEN ; i++ )
         new_node->port[i] = port[i];
     new_node->port[i] = '\0';
 
-    for( i = 0 ; i < entolh_size ; i++ )
+    for( i = 0 ; i < ENTOLH_LEN ; i++ )
         new_node->entolh[i] = entolh[i];
-
-
-    //printf ( "%s   %s   %s\n" , new_node->peer_addr , new_node->port , new_node->entolh ); gia na blepoume ti mpainei sthn lista 
-
 
     /* 3. This new node is going to be the last node, so make next of it as NULL*/
     new_node->next = NULL;
@@ -95,22 +88,17 @@ int pop( struct node **list , char * address , char * port , char * entolh )
     // Store head node
     struct node* head = *list; 
 
-    /* 1. allocate space */
-    int port_size = strlen( head->port );
-    int entolh_size = strlen( head->entolh );
-
-   
-    /* 2. put out the data  */
+    /* put out the data  */
     for( int i = 0 ; i < INET_ADDRSTRLEN ; i++ )
        address[i] = head->peer_addr[i];
 
-    for( int i = 0 ; i < port_size ; i++ )
+    for( int i = 0 ; i < PORT_LEN ; i++ )
        port[i] = head->port[i];
 
-    for( int i = 0 ; i < entolh_size + 1 ; i++ )
+    for( int i = 0 ; i < ENTOLH_LEN + 1 ; i++ )
        entolh[i] = head->entolh[i];
 
-    /* 3. delete head  */
+    /* delete head  */
     *list = head->next; // Change head
 
     free(head);
