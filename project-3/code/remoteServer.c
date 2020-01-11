@@ -4,6 +4,8 @@
 int read_from_socket( int filedes , struct node ** lista_entolwn );
 void sceduler( int pipe_dia8esimwn_read , int pipe_entolwn_write[] , struct node ** lista_entolwn );
 void child_work( int child_id , int pipe_dia8esimothtas_write , int pipe_entolwn_read );
+int spasimo_entolhs( char * entolh , char ** res , char delim);
+int legal_command( const char* string );
 
 
 int main( int argc , char ** argv )
@@ -222,9 +224,6 @@ int read_from_socket( int filedes , struct node ** lista_entolwn )
 
     inet_ntop(AF_INET, &(addr.sin_addr), peer_addr, INET_ADDRSTRLEN);
 
-    printf( "!!!!!!! Server: connect from host %s, port %d. \n" , peer_addr , (int) ntohs( addr.sin_port ));
-
-
     while ( ( ret = read( filedes, buf , sizeof(buf)-1 ) ) > 0 ) 
     {
         i = 0;
@@ -320,7 +319,6 @@ void child_work( int child_id , int pipe_dia8esimothtas_write , int pipe_entolwn
     if ( write( pipe_dia8esimothtas_write , &child_id , sizeof(child_id) ) == -1 ) 
         perror_exit("write sto pipe dia8esimothtas");
 
-
     // perimene na sou steilei doulia
     char pipe_message[PIPE_MESSAGE_LEN];
     int nread = read( pipe_entolwn_read , pipe_message , PIPE_MESSAGE_LEN );
@@ -332,55 +330,144 @@ void child_work( int child_id , int pipe_dia8esimothtas_write , int pipe_entolwn
     char port[PORT_LEN];
     char entolh[ENTOLH_LEN];
 
+
     char * delim = "@";
     char * token;
+
     token = strtok(pipe_message, delim);
-
     strcpy(peer_addr , token);
+    
     token = strtok(NULL, delim);
-
     strcpy(port , token);
-    token = strtok(NULL, delim);
 
+    token = strtok(NULL, delim);
     strcpy(entolh , token);
-    token = strtok(NULL, delim);
 
-    printf( "paidi %d:   %s    %s   %s\n" , child_id , peer_addr , port , entolh );
+    token = strtok(NULL, delim);//////?????????????????????????????????????????
+
+
     // entolh panw apo 100 la8os
     int len = strlen(entolh);
-    if( len > 101 )
-        printf( " megalh entolh \n");
+
 
     // sanitize
     char * ptr;
 
-    ptr = strchr( entolh , ';' );
+    ptr = strchr( entolh , ';' ); // sbhnoume oti yparxei meta apo ; allazontas ton me ton termatiko xarakthra
     if (ptr != NULL) {
         *ptr = '\0';
     }
-    printf( "%s\n" , entolh );
     char * sanitized_entolh = entolh;
 
-    // execute
-    token = strtok (sanitized_entolh, "|");
-    char upoentolh[ENTOLH_LEN];
 
-    while ( token != NULL )
+    // spasimo entolhs bash twn pipes
+    char ** res;
+    res = malloc(sizeof(char*));
+
+    int ari8mos_upoentolwn = spasimo_entolhs( sanitized_entolh , res , '|');
+
+    // briskei swstes ipoentoles
+    char temp[105];
+    delim = " ";
+    int swstes_upoentoles = 0;
+
+    for  ( int i = 0 ; i < ari8mos_upoentolwn ; i++ )
     {
-        strcpy( upoentolh , token );
-        token = strtok (NULL, "|");
+        strcpy( temp , res[i] );
+        token = strtok( temp , delim );
+        
+        if ( !legal_command( token ) )
+            break;
 
-        "ls" "-args" "isodo"
-        exec( , , )
+        swstes_upoentoles++;
     }
 
-    // steile apanthsh ston pelath
+    // kataskeuh swsths entolhs enonontas tis swstes ipoentoles me pipes
+    char swsth_entwlh[105] = {0};
+  
+    for  ( int i = 0 ; i < swstes_upoentoles ; i++ )
+    {
+        strcat( swsth_entwlh , res[i]);
+        if ( i < swstes_upoentoles - 1)
+            strcat( swsth_entwlh , "| ");
+    }
+
+    // kataskeuh onomatos
+    char fname[100] = {0};
+
+    int counter = 1;
+
+    sprintf( fname , "output.%s.%d%d" , port , child_id , counter );
+
+    // psaxnei monadiko onoma arxeiou
+    while( access( fname, F_OK ) != -1 )
+    {
+        sprintf( fname , "output.%s.%d%d" , port ,  child_id , counter );
+        counter++;
+    }
+
+    // dhmiourgia arxeiou
+    FILE * fPtr;
+    fPtr = fopen( fname, "w" );
+    if(fPtr == NULL)
+        perror_exit("Unable to create file.");
+
+    // dhmiourgia ekteleshmhs entolhs gia system
+    char ektelesimh_entolh[250] = {0};
+
+    if( len < 101 ) // an h entolh einai panw apo 100 xarakthres agnoeitai
+        strcat( ektelesimh_entolh , swsth_entwlh);
+    strcat( ektelesimh_entolh , " > " );
+    strcat( ektelesimh_entolh , fname );
+
+    // ektelesh entolhs
+    printf("%s\n" , ektelesimh_entolh);
+    fflush(stdout);
+    system( ektelesimh_entolh );
 
     //ksanagine dia8esimos
-while(1){
+    child_work(child_id , pipe_dia8esimothtas_write , pipe_entolwn_read );
 
+    printf("child %d dead\n" , child_id);
+    exit(0);
 }
 
-printf("child %d dead\n" , child_id);
-    exit(0);
+
+/* spaei thn entolh se upoentoles */
+int  spasimo_entolhs( char * entolh , char ** res , char delim)
+{
+    char * p = strtok (entolh, &delim);
+    int n_spaces = 0;
+
+    /* split string and append tokens to 'res' */
+    while (p) {
+        res = realloc (res, sizeof (char*) * ++n_spaces);
+
+        if (res == NULL)
+            exit (-1); /* memory allocation failed */
+
+        res[n_spaces-1] = p;
+
+        p = strtok (NULL, &delim);
+    }
+
+    /* realloc one extra element for the last NULL */
+    res = realloc (res, sizeof (char*) * (n_spaces+1));
+    res[n_spaces] = 0;
+
+    return n_spaces;
+}
+
+
+/* elenxei an h entolh einai apo autes pou epitrepontai */
+int legal_command( const char* string )
+{
+    const char * strings[5] = { "ls" , "grep" , "cut" , "cat" , "tr" };
+
+    for (int i = 0; i < 5; i++) {
+        if (!strcmp(string, strings[i])) {
+            return 1;
+        }
+    }
+    return 0;
 }

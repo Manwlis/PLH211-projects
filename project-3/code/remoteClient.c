@@ -98,7 +98,7 @@ void create_message( FILE *stream , int socket_id , int receive_port )
             do{
                 nread = getline( &line[i] , &len[i] , stream );
             }
-            while ( empty_line( line[i] ) );
+            while ( empty_line( line[i])  && nread != -1 );
             //ipologismos mege8ous mhnumatos
             if ( nread != -1 )
             {
@@ -106,7 +106,9 @@ void create_message( FILE *stream , int socket_id , int receive_port )
                 ari8mos_entolwn++;
             }
             else
+            {
                 *line[i] = '\0'; // exei teleiwsei to arxeio
+            }
         }
 
         // den exei kati na steilei
@@ -137,6 +139,7 @@ void send_message(char * block_entolwn , int block_entolwn_size , int socket_id 
 {
     // 5 8eseis gia to port kai 3 gia to format
     int message_size = block_entolwn_size + 8;
+    
     // add receive port to final message
     char message[message_size];
     sprintf( message , "%d\n", receive_port );
@@ -151,7 +154,9 @@ void send_message(char * block_entolwn , int block_entolwn_size , int socket_id 
     // send message
     printf("\n%s\nsize = %d\n\n" ,  message , message_size );
     fflush(stdout);
+
     write( socket_id , message , message_size );
+
     sleep(5);
 }
 
@@ -159,6 +164,7 @@ void send_message(char * block_entolwn , int block_entolwn_size , int socket_id 
 int empty_line( char * line )
 {
     int line_size = strlen(line);
+
     for( int i = 0 ; i < line_size ; i++ )
         if ( line[i] != '\0' && line[i] != '\n' && line[i] != ' ' && line[i] != '\t' )
             return 0;
