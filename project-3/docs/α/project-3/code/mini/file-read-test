@@ -1,6 +1,0 @@
-ls  /home/manolis/ | tr  '.d' ' ' | grep 'Desktop'
-ls  /home/manolis/ | tr  '.d' ' ' | grep 'Desktop'
-ls  /home/manolis/ | tr  '.d' ' ' | grep 'Desktop'
-ls  /home/manolis/ | tr  '.d' ' '
-ls  /home/manolis/ | tr  '.d' ' ' | grep 'Desktop'
-cd  /home/manolis/ | tr  '.d' ' ' | grep 'Desktop'
