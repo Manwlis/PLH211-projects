@@ -1,0 +1,9 @@
+{
+    "files.associations": {
+        "types.h": "c",
+        "signal.h": "c",
+        "deli_client": "c",
+        "unistd.h": "c",
+        "string.h": "c"
+    }
+}
